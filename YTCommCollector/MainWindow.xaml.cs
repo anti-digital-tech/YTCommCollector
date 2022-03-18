@@ -13,6 +13,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using Microsoft.WindowsAPICodePack.Dialogs;
+using System.IO;
+using System.Collections.Specialized;
 
 namespace YTCommCollector
 {
@@ -21,24 +25,58 @@ namespace YTCommCollector
   /// </summary>
   public partial class MainWindow : Window
   {
-    List<Status> ListStatuses { get; set; } = new List<Status>();
+    List<Status> ListStatuses_ { get; set; } = new List<Status>();
+    string apiKey_ = string.Empty;
 
     public MainWindow()
     {
       InitializeComponent();
-      Engine engine = new Engine("{ApiKey}");
-      //DataGridMain.ItemsSource = ListStatuses;
       UpdateDisplayList();
-    }
+      EnableDragDrop(TextBox_PathOutput);
 
+      apiKey_ = (string)Application.Current.FindResource("ApiKey");
+    }
+    private void EnableDragDrop(Control control)
+    {
+      control.AllowDrop = true;
+      control.PreviewDragOver += (s, e) =>
+      {
+        DragDropEffects effects = DragDropEffects.None;
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+          var path = ((string[])e.Data.GetData(DataFormats.FileDrop))[0];
+          if (Directory.Exists(path))
+          {
+            effects = DragDropEffects.Copy;
+          }
+        }
+        e.Effects = effects;
+        e.Handled = true;
+      };
+
+      control.PreviewDrop += (s, e) =>
+      {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+          string[] paths = ((string[])e.Data.GetData(DataFormats.FileDrop));
+          TextBox_PathOutput.Text = paths[0];
+        }
+      };
+    }
     void UpdateDisplayList()
     {
-      this.DataGridMain.ItemsSource = new ReadOnlyCollection<Status>(ListStatuses); 
+      DataGridMain.ItemsSource = new ReadOnlyCollection<Status>(ListStatuses_);
+    }
+
+    void UpdateUI()
+    {
+      Button_Run.IsEnabled = 0 < DataGridMain.Items.Count && !TextBox_PathOutput.Text.StartsWith('<');
+      Button_Clear.IsEnabled = 0 < DataGridMain.Items.Count;
     }
 
     private void TextBox_VideoId_GotFocus(object sender, RoutedEventArgs e)
     {
-      if(((TextBox)sender).Text == "<Input Video ID>")
+      if(((TextBox)sender).Text == (string)Application.Current.FindResource("MSG_TextBox_VideoId"))
       {
         ((TextBox)sender).Text = "";
         ((TextBox)sender).Foreground = SystemColors.ControlTextBrush;
@@ -49,7 +87,7 @@ namespace YTCommCollector
     {
       if ((((TextBox)sender).Text == ""))
       {
-        ((TextBox)sender).Text = "<Input Video ID>";
+        ((TextBox)sender).Text = (string)Application.Current.FindResource("MSG_TextBox_VideoId");
         const string Value = "#D0D0D0";
         ((TextBox)sender).Foreground = new BrushConverter().ConvertFrom(Value) as SolidColorBrush;
       }
@@ -72,13 +110,23 @@ namespace YTCommCollector
       Close();
     }
 
-    private void Button_Add_Click(object sender, RoutedEventArgs e)
+    private async void Button_Add_Click(object sender, RoutedEventArgs e)
     {
       if(0 < TextBox_VideoId.Text.Length )
       {
-        ListStatuses.Add(new Status(TextBox_VideoId.Text));
+        Status status = new Status(YTCommFetcher.CorrectVideoId(TextBox_VideoId.Text));
         TextBox_VideoId.Text = String.Empty;
+        status.Title = await YTTitleFetcher.GetTitleAsync(apiKey_, status.VideoId);
+        if (status.Title == String.Empty)
+        {
+          MessageBox.Show("ERROR: Incorrect Video ID was specified.");
+        }
+        else
+        {
+          ListStatuses_.Add(status);
+        }
         UpdateDisplayList();
+        UpdateUI();
       }
     }
 
@@ -89,10 +137,12 @@ namespace YTCommCollector
         Status? status = DataGridMain.Items[i] as Status;
         if (status!=null && status.IsSelected )
         {
-          ListStatuses.Remove(status);
+          ListStatuses_.Remove(status);
         }
       }
       UpdateDisplayList();
+      UpdateUI();
+      Button_Remove.IsEnabled = false;
     }
 
     private void Button_Clear_Click(object sender, RoutedEventArgs e)
@@ -102,10 +152,63 @@ namespace YTCommCollector
         Status? status = DataGridMain.Items[i] as Status;
         if (status!=null)
         {
-          ListStatuses.Remove(status);
+          ListStatuses_.Remove(status);
         }
       }
       UpdateDisplayList();
+      UpdateUI();
+      Button_Remove.IsEnabled = false;
+    }
+
+    private void DataGridMain_SourceUpdated(object sender, DataTransferEventArgs e)
+    {
+      for (int i = 0; i < DataGridMain.Items.Count; i++)
+      {
+        Status? status = DataGridMain.Items[i] as Status;
+        if( status!=null && status.IsSelected )
+        {
+          Button_Remove.IsEnabled = true;
+          return;
+        }
+      }
+      Button_Remove.IsEnabled = false;
+    }
+
+    private void Button_Folder_Click(object sender, RoutedEventArgs e)
+    {
+      using (var commonOpenFileDialog = new CommonOpenFileDialog()
+      {
+        Title = "Choose a folder where data of comments will be placed",
+        InitialDirectory = TextBox_PathOutput.Text.StartsWith('<') ?
+          Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + @"\Downloads\" : TextBox_PathOutput.Text,
+        IsFolderPicker = true,
+        RestoreDirectory = true,
+      })
+      {
+        if (commonOpenFileDialog.ShowDialog() != CommonFileDialogResult.Ok)
+        {
+          return;
+        }
+        TextBox_PathOutput.Text = commonOpenFileDialog.FileName;
+        UpdateUI();
+      }
+    }
+
+    private async void Button_Run_Click(object sender, RoutedEventArgs e)
+    {
+      DataGridMain.IsEnabled = false;
+      Button_Add.IsEnabled = false;
+      Button_Clear.IsEnabled = false;
+      Button_Run.IsEnabled = false;
+
+      YTCommFetcher ytCommFetcher = new YTCommFetcher(apiKey_, this, UpdateDisplayList);
+      await ytCommFetcher.FetchAsync(ListStatuses_);
+      UpdateDisplayList();
+      MessageBox.Show("Completed");
+      DataGridMain.IsEnabled = true;
+      Button_Add.IsEnabled = true;
+      Button_Clear.IsEnabled = true;
+      Button_Run.IsEnabled = true;
     }
   }
 }

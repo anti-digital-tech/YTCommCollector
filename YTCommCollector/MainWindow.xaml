@@ -5,21 +5,23 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:YTCommCollector"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
+        Title="{StaticResource Title_App}" Height="450" Width="800" MinHeight="300" MinWidth="600" Loaded="Window_Loaded" ResizeMode="CanResizeWithGrip">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition />
       <RowDefinition Height="80" />
+      <RowDefinition Height="60.04"/>
+      <RowDefinition Height="7"/>
     </Grid.RowDefinitions>
     <DataGrid x:Name="DataGridMain"
             AutoGenerateColumns="False"
             IsReadOnly="False"
-            Margin="10,0,10,0" >
+            Margin="10,0,10,0" SourceUpdated="DataGridMain_SourceUpdated">
       <DataGrid.Columns>
         <DataGridTemplateColumn IsReadOnly="True" Header="Select">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate>
-              <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+              <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, NotifyOnSourceUpdated=True}"/>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
@@ -29,19 +31,33 @@
         <DataGridTextColumn Header="Title" Width="*" Binding="{Binding Title}" IsReadOnly="True"/>
       </DataGrid.Columns>
     </DataGrid>
-    <GroupBox Header="Item Control" Margin="10,0,10,5" Grid.RowSpan="2" Height="75" VerticalAlignment="Bottom">
-      <Grid Height="60">
+    <GroupBox Header="Item Control" Margin="10,0,10,0" Height="76" VerticalAlignment="Center" Grid.Row="1">
+      <Grid Height="55">
         <Grid.RowDefinitions>
-          <RowDefinition Height="24"/>
-          <RowDefinition Height="36" />
+          <RowDefinition Height="25"/>
+          <RowDefinition Height="35" />
         </Grid.RowDefinitions>
-        <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Text="Video ID:" VerticalAlignment="Top" Margin="10,2,0,0" Height="16" Width="60"/>
-        <TextBox Name="TextBox_VideoId" Margin="75,0,10,0" TextWrapping="Wrap" Text="&lt;Input Video ID&gt;" VerticalAlignment="Center" Height="18" Foreground="#FFD0D0D0"/>
-        <Button Name="Button_Add" Content="Add" Margin="10,6,0,0" VerticalAlignment="Top" Height="20" IsEnabled="False" Click="Button_Add_Click" Grid.Row="1" HorizontalAlignment="Left" Width="131"/>
-        <Button Name="Button_Remove" Content="Remove Selected" HorizontalAlignment="Left" Margin="146,6,0,0" Grid.Row="1" VerticalAlignment="Top" Height="20" Width="120" Click="Button_Remove_Click"/>
-        <Button Name="Button_Clear" Content="Remove All" HorizontalAlignment="Left" Margin="271,6,0,0" Grid.Row="1" VerticalAlignment="Top" Height="20" Width="120" Click="Button_Clear_Click"/>
-        <Button Name="Button_Quit" Content="Quit" Margin="0,0,10,0" Grid.Row="1" VerticalAlignment="Center" Height="20" HorizontalAlignment="Right" Width="80" Click="Button_Quit_Click"/>
+        <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Text="Video ID:" VerticalAlignment="Center" Margin="10,0,0,0" Height="16" Width="60"/>
+        <TextBox Name="TextBox_VideoId" Margin="75,0,105,0" TextWrapping="Wrap" Text="{StaticResource MSG_TextBox_VideoId}" VerticalAlignment="Center" Height="22" Foreground="#FFD0D0D0"/>
+        <Button Name="Button_Add" Content="Add" VerticalAlignment="Center" Height="20" IsEnabled="False" Click="Button_Add_Click" HorizontalAlignment="Right" Width="100"/>
+        <Button Name="Button_Remove" Content="Remove Selected" Margin="0,0,105,0" Grid.Row="1" VerticalAlignment="Center" Height="20" Click="Button_Remove_Click" IsEnabled="False" HorizontalAlignment="Right" Width="100"/>
+        <Button Name="Button_Clear" Content="Remove All" Grid.Row="1" VerticalAlignment="Center" Height="20" Click="Button_Clear_Click" IsEnabled="False" HorizontalAlignment="Right" Width="100"/>
       </Grid>
     </GroupBox>
+    <Grid Grid.Row="2" Grid.RowSpan="2">
+      <Grid.RowDefinitions>
+        <RowDefinition/>
+        <RowDefinition Height="0*"/>
+      </Grid.RowDefinitions>
+      <Button Name="Button_Folder" Margin="0,10,10,35" HorizontalAlignment="Right" Width="26" Click="Button_Folder_Click">
+        <StackPanel Orientation="Horizontal" Margin="4,2">
+          <Image Source="./Resources/icons/directory_search.png" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button Name="Button_Run" Content="Run" IsEnabled="False" Margin="0,0,115,10" Height="20" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="100" Click="Button_Run_Click"/>
+      <Button Name="Button_Quit" Content="Quit" Margin="0,0,10,10" Click="Button_Quit_Click" HorizontalAlignment="Right" Width="100" Height="20" VerticalAlignment="Bottom"/>
+      <TextBlock HorizontalAlignment="Left" Margin="10,10,0,37" TextWrapping="Wrap" Text="Output:" Width="50"/>
+      <TextBox Name="TextBox_PathOutput" Margin="65,9,41,0" TextWrapping="Wrap" Text="{StaticResource MSG_TextBox_Output}" IsReadOnly="True" Height="22" VerticalAlignment="Top" Foreground="#FF404040" Background="#FFD0D0D0"/>
+    </Grid>
   </Grid>
 </Window>

@@ -9,8 +9,8 @@ namespace YTCommCollector
   internal class Status
   {
     public string VideoId { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public int Progress { get; set; } = 0;
+    public string? Title { get; set; } = string.Empty;
+    public string Progress { get; set; } = string.Empty;
 
     public int Count
     {
@@ -26,7 +26,7 @@ namespace YTCommCollector
     {
       VideoId = videoId;
       Title = String.Empty;
-      Progress = 0;
+      Progress = "Stopped";
     }
 
     public Boolean IsSelected { get; set; } = false;
