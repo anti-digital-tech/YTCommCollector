@@ -17,6 +17,9 @@ using System.Diagnostics;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System.IO;
 using System.Collections.Specialized;
+using System.Windows.Controls.Primitives;
+using System.Data;
+using ClosedXML.Excel;
 
 namespace YTCommCollector
 {
@@ -112,14 +115,29 @@ namespace YTCommCollector
 
     private async void Button_Add_Click(object sender, RoutedEventArgs e)
     {
+      string videoId = YTCommFetcher.CorrectVideoId(TextBox_VideoId.Text);
+      if (string.IsNullOrEmpty(videoId))
+      {
+        MessageBox.Show("ERROR: Incorrect Video ID was specified.");
+        return;
+      }
+      foreach(Status status in ListStatuses_)
+      {
+        if (status.VideoId == videoId)
+        {
+          MessageBox.Show("ERROR: The same Video ID has been already registered.");
+          return;
+        }
+      }
       if(0 < TextBox_VideoId.Text.Length )
       {
-        Status status = new Status(YTCommFetcher.CorrectVideoId(TextBox_VideoId.Text));
+        Status status = new Status(videoId);
         TextBox_VideoId.Text = String.Empty;
         status.Title = await YTTitleFetcher.GetTitleAsync(apiKey_, status.VideoId);
         if (status.Title == String.Empty)
         {
           MessageBox.Show("ERROR: Incorrect Video ID was specified.");
+          return;
         }
         else
         {
@@ -129,8 +147,19 @@ namespace YTCommCollector
         UpdateUI();
       }
     }
-
+    private void DataGrid_Button_Click(object sender, RoutedEventArgs e)
+    {
+      Status status = (Status)((Button)e.Source).DataContext;
+      int index = ListStatuses_.IndexOf(status);
+      if (-1 != index)
+      {
+        ListStatuses_.RemoveAt(index);
+        UpdateDisplayList();
+      }
+    }
+    /*
     private void Button_Remove_Click(object sender, RoutedEventArgs e)
+
     {
       for (int i = DataGridMain.Items.Count - 1; i >= 0; i--)
       {
@@ -144,6 +173,7 @@ namespace YTCommCollector
       UpdateUI();
       Button_Remove.IsEnabled = false;
     }
+    */
 
     private void Button_Clear_Click(object sender, RoutedEventArgs e)
     {
@@ -157,7 +187,6 @@ namespace YTCommCollector
       }
       UpdateDisplayList();
       UpdateUI();
-      Button_Remove.IsEnabled = false;
     }
 
     private void DataGridMain_SourceUpdated(object sender, DataTransferEventArgs e)
@@ -167,11 +196,9 @@ namespace YTCommCollector
         Status? status = DataGridMain.Items[i] as Status;
         if( status!=null && status.IsSelected )
         {
-          Button_Remove.IsEnabled = true;
           return;
         }
       }
-      Button_Remove.IsEnabled = false;
     }
 
     private void Button_Folder_Click(object sender, RoutedEventArgs e)
@@ -194,6 +221,47 @@ namespace YTCommCollector
       }
     }
 
+    void WriteToExcel()
+    {
+      DateTime dt = DateTime.Now;
+      string pathFile = System.IO.Path.Combine(TextBox_PathOutput.Text, "YTCommCollector_OUTPUT_" + dt.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
+      using (var workbook = new XLWorkbook())
+      {
+        foreach(var status in ListStatuses_)
+        {
+          int row = 1;
+          var worksheet = workbook.Worksheets.Add(status.VideoId);
+          worksheet.Cell(row, 1).Value = "Video ID :";
+          worksheet.Cell(row++, 2).Value = status.VideoId;
+          worksheet.Cell(row, 1).Value = "Title :";
+          worksheet.Cell(row++, 2).FormulaA1 = $"=HYPERLINK(\"" + status.Url + "\", \"" + status.Title + "\")";
+          row++;
+
+          worksheet.Cell(row, 1).Value = "seq #";
+          worksheet.Cell(row, 2).Value = "child #";
+          worksheet.Cell(row, 3).Value = "date time";
+          worksheet.Cell(row, 4).Value = "comment";
+          worksheet.Cell(row, 5).Value = "author";
+          worksheet.Cell(row, 6).Value = "good count";
+          worksheet.Cell(row, 7).Value = "reply count";
+          row++;
+
+          foreach(var comm in status.ListComms)
+          {
+            worksheet.Cell(row, 1).Value = comm.SeqNum;
+            worksheet.Cell(row, 2).Value = comm.ChildNum;
+            worksheet.Cell(row, 3).Value = comm.CreatedAt;
+            worksheet.Cell(row, 4).Value = comm.Text;
+            worksheet.Cell(row, 5).Value = comm.Author;
+            worksheet.Cell(row, 6).Value = comm.CountGood;
+            worksheet.Cell(row, 7).Value = comm.CountReply;
+            row++;
+          }
+        }
+        workbook.SaveAs(pathFile);
+      }
+    }
+
     private async void Button_Run_Click(object sender, RoutedEventArgs e)
     {
       DataGridMain.IsEnabled = false;
@@ -204,6 +272,7 @@ namespace YTCommCollector
       YTCommFetcher ytCommFetcher = new YTCommFetcher(apiKey_, this, UpdateDisplayList);
       await ytCommFetcher.FetchAsync(ListStatuses_);
       UpdateDisplayList();
+      WriteToExcel();
       MessageBox.Show("Completed");
       DataGridMain.IsEnabled = true;
       Button_Add.IsEnabled = true;
