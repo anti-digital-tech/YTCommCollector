@@ -230,11 +230,11 @@ namespace YTCommCollector
         foreach(var status in ListStatuses_)
         {
           int row = 1;
-          var worksheet = workbook.Worksheets.Add(status.VideoId);
+          var worksheet = workbook.Worksheets.Add($"{status.VideoId}");
           worksheet.Cell(row, 1).Value = "Video ID :";
-          worksheet.Cell(row++, 2).Value = status.VideoId;
+          worksheet.Cell(row++, 2).Value = $"'{status.VideoId}";
           worksheet.Cell(row, 1).Value = "Title :";
-          worksheet.Cell(row++, 2).FormulaA1 = $"=HYPERLINK(\"" + status.Url + "\", \"" + status.Title + "\")";
+          worksheet.Cell(row++, 2).FormulaA1 = $"=HYPERLINK(\"{status.Url}\", \"{status.Title}\")";
           row++;
 
           worksheet.Cell(row, 1).Value = "seq #";
